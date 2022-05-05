@@ -2,9 +2,15 @@
 
 bool alerting = false;
 unsigned long timer = 0;
+const int ledPin = 3;
 
 void setup() {
   Serial.begin(9600);
+
+  while (!Serial);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
 
   xTaskCreate(readBreathingRate, "Breathing Rate", 128, NULL, 1, NULL);
   xTaskCreate(buzzerAlert, "Buzzer Alert", 128, NULL, 1, NULL);
@@ -14,8 +20,10 @@ void setup() {
 void loop() {}
 
 void readBreathingRate(void *pvParameters) {
-  const int breathingPin = A1;
+  const int breathingPin = A7;
+  const int breathingRawAmplifiedPin = A2;
   pinMode(breathingPin, INPUT);
+  pinMode(breathingRawAmplifiedPin, INPUT);
 
   int minnum = 500, maxnum = 0, avg;
 
@@ -33,32 +41,40 @@ void readBreathingRate(void *pvParameters) {
   }
   avg = (minnum + maxnum) / 2;
 
+  Serial.println("\nBreathingRate, BreathingRateRaw, Average");
+
+  bool isHigh = false;
+
   while (1) {
     int breathingRate = analogRead(breathingPin);
+    int breathingRawAmplifiedRate = analogRead(breathingRawAmplifiedPin);
 
-    if ((breathingRate >= avg && breathingRate <= avg + 50) || (breathingRate <= avg && breathingRate >= avg - 50)) {
+    if (breathingRate >= avg && !isHigh || breathingRate <= avg && isHigh) {
       timer = millis();
+      isHigh = !isHigh;
     }
 
     if (millis() - timer >= 5000) {
       alerting = true;
     }
 
-    Serial.println(breathingRate + String(", ") + avg);
+    Serial.println(breathingRate + String(", ") + breathingRawAmplifiedRate + String(", ") + avg);
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
 void buzzerAlert(void *pvParameters) {
-  const int buzzerPin = 9;
+  const int buzzerPin = 5;
   pinMode(buzzerPin, OUTPUT);
 
   while (1) {
     while (alerting) {
       digitalWrite(buzzerPin, HIGH);
+      digitalWrite(ledPin, HIGH);
       vTaskDelay(200 / portTICK_PERIOD_MS);
       digitalWrite(buzzerPin, LOW);
+      digitalWrite(ledPin, LOW);
       vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 
@@ -67,11 +83,8 @@ void buzzerAlert(void *pvParameters) {
 }
 
 void readSwitch(void *pvParameters) {
-  const int swPin = 10;
+  const int swPin = 2;
   pinMode(swPin, INPUT_PULLUP);
-
-  const int ledPin = 3;
-  pinMode(ledPin, OUTPUT);
 
   bool reading = HIGH;
   bool lastState = HIGH;
@@ -80,7 +93,7 @@ void readSwitch(void *pvParameters) {
     reading = digitalRead(swPin);
     if (reading != lastState) {
       if (reading == LOW) {
-        alerting = false;
+        alerting = !alerting;
         timer = millis();
         digitalWrite(ledPin, alerting);
       }
