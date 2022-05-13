@@ -1,16 +1,15 @@
 #include <Arduino_FreeRTOS.h>
 
 bool alerting = false;
-unsigned long timer = 0;
+unsigned long timer;
 const int ledPin = 3;
+const int nodeMCUPin = 7;
 
 void setup() {
   Serial.begin(9600);
 
-  while (!Serial);
-
   pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);
+  pinMode(nodeMCUPin, OUTPUT);
 
   xTaskCreate(readBreathingRate, "Breathing Rate", 128, NULL, 1, NULL);
   xTaskCreate(buzzerAlert, "Buzzer Alert", 128, NULL, 1, NULL);
@@ -24,6 +23,11 @@ void readBreathingRate(void *pvParameters) {
   const int breathingRawAmplifiedPin = A2;
   pinMode(breathingPin, INPUT);
   pinMode(breathingRawAmplifiedPin, INPUT);
+
+  const int breathInPin = 5;
+  const int breathOutPin = 6;
+  pinMode(breathInPin, OUTPUT);
+  pinMode(breathOutPin, OUTPUT);
 
   int minnum = 500, maxnum = 0, avg;
 
@@ -44,6 +48,7 @@ void readBreathingRate(void *pvParameters) {
   Serial.println("\nBreathingRate, BreathingRateRaw, Average");
 
   bool isHigh = false;
+  timer = millis();
 
   while (1) {
     int breathingRate = analogRead(breathingPin);
@@ -52,10 +57,14 @@ void readBreathingRate(void *pvParameters) {
     if (breathingRate >= avg && !isHigh || breathingRate <= avg && isHigh) {
       timer = millis();
       isHigh = !isHigh;
+
+      digitalWrite(breathInPin, isHigh);
+      digitalWrite(breathOutPin, !isHigh);
     }
 
-    if (millis() - timer >= 5000) {
+    if (!alerting && millis() - timer >= 20000) {
       alerting = true;
+      digitalWrite(nodeMCUPin, HIGH);
     }
 
     Serial.println(breathingRate + String(", ") + breathingRawAmplifiedRate + String(", ") + avg);
@@ -65,7 +74,7 @@ void readBreathingRate(void *pvParameters) {
 }
 
 void buzzerAlert(void *pvParameters) {
-  const int buzzerPin = 5;
+  const int buzzerPin = 4;
   pinMode(buzzerPin, OUTPUT);
 
   while (1) {
@@ -93,9 +102,10 @@ void readSwitch(void *pvParameters) {
     reading = digitalRead(swPin);
     if (reading != lastState) {
       if (reading == LOW) {
-        alerting = !alerting;
+        alerting = false;
         timer = millis();
-        digitalWrite(ledPin, alerting);
+        digitalWrite(ledPin, LOW);
+        digitalWrite(nodeMCUPin, LOW);
       }
     }
     lastState = reading;
