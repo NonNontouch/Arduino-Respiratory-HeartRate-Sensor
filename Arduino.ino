@@ -20,9 +20,7 @@ void loop() {}
 
 void readBreathingRate(void *pvParameters) {
   const int breathingPin = A7;
-  const int breathingRawAmplifiedPin = A2;
   pinMode(breathingPin, INPUT);
-  pinMode(breathingRawAmplifiedPin, INPUT);
 
   const int breathInPin = 5;
   const int breathOutPin = 6;
@@ -52,7 +50,6 @@ void readBreathingRate(void *pvParameters) {
 
   while (1) {
     int breathingRate = analogRead(breathingPin);
-    int breathingRawAmplifiedRate = analogRead(breathingRawAmplifiedPin);
 
     if (breathingRate >= avg && !isHigh || breathingRate <= avg && isHigh) {
       timer = millis();
@@ -67,7 +64,6 @@ void readBreathingRate(void *pvParameters) {
       digitalWrite(nodeMCUPin, HIGH);
     }
 
-    Serial.println(breathingRate + String(", ") + breathingRawAmplifiedRate + String(", ") + avg);
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
