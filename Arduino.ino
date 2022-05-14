@@ -6,7 +6,6 @@ const int ledPin = 3;
 const int nodeMCUPin = 7;
 
 void setup() {
-  Serial.begin(9600);
 
   pinMode(ledPin, OUTPUT);
   pinMode(nodeMCUPin, OUTPUT);
@@ -43,7 +42,6 @@ void readBreathingRate(void *pvParameters) {
   }
   avg = (minnum + maxnum) / 2;
 
-  Serial.println("\nBreathingRate, BreathingRateRaw, Average");
 
   bool isHigh = false;
   timer = millis();
